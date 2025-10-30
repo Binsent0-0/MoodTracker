@@ -1,5 +1,6 @@
 package com.example.moodtracker
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,7 @@ class LoginActivity : ComponentActivity() {
 fun LoginScreen() {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -64,7 +67,11 @@ fun LoginScreen() {
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            Image(painter = painterResource(id = R.drawable.mood_icons), contentDescription = null)
+            Image(
+                painter = painterResource(id = R.drawable.mood_icons),
+                contentDescription = null,
+                modifier = Modifier.size(200.dp) // Increased size
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -75,6 +82,8 @@ fun LoginScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
                     focusedContainerColor = Color(0xFFD6E4FF),
                     unfocusedContainerColor = Color(0xFFD6E4FF),
                     disabledContainerColor = Color(0xFFD6E4FF),
@@ -93,6 +102,8 @@ fun LoginScreen() {
                 shape = RoundedCornerShape(16.dp),
                 visualTransformation = PasswordVisualTransformation(),
                 colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
                     focusedContainerColor = Color(0xFFD6E4FF),
                     unfocusedContainerColor = Color(0xFFD6E4FF),
                     disabledContainerColor = Color(0xFFD6E4FF),
@@ -104,7 +115,7 @@ fun LoginScreen() {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = { /* TODO */ },
+                onClick = { context.startActivity(Intent(context, HomeActivity::class.java)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
