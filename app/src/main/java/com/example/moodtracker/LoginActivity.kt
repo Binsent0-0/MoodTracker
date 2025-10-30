@@ -41,9 +41,19 @@ fun LoginScreen() {
     var password by remember { mutableStateOf("") }
     val context = LocalContext.current
 
+    val userCredentials = mapOf(
+        "rom" to "rom123",
+        "kian" to "kian123",
+        "vince" to "vince123",
+        "roxanne" to "roxanne123",
+        "kyra" to "kyra123",
+        "lois" to "lois123",
+        "lester" to "lester123"
+    )
+
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFFFF7F0) // A very light cream color
+        color = Color(0xFFFFF7F0)
     ) {
         Column(
             modifier = Modifier
@@ -115,7 +125,13 @@ fun LoginScreen() {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = { context.startActivity(Intent(context, HomeActivity::class.java)) },
+                onClick = { 
+                    if (userCredentials[username] == password) {
+                        val intent = Intent(context, HomeActivity::class.java)
+                        intent.putExtra("USERNAME", username)
+                        context.startActivity(intent)
+                    }
+                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

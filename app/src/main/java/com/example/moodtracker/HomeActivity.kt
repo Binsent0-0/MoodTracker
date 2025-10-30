@@ -1,5 +1,6 @@
 package com.example.moodtracker
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,16 +42,17 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val username = intent.getStringExtra("USERNAME") ?: "User"
         setContent {
             MoodTrackerTheme {
-                MainScreen()
+                MainScreen(username = username)
             }
         }
     }
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(username: String) {
     var selectedItem by remember { mutableStateOf(0) }
     val items = listOf("Home", "Summary", "History", "Profile")
     val icons = listOf(Icons.Filled.Home, Icons.Filled.List, Icons.Filled.DateRange, Icons.Filled.Person)
@@ -71,7 +74,7 @@ fun MainScreen() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedItem) {
-                0 -> HomeScreenContent()
+                0 -> HomeScreenContent(username = username)
                 1 -> SummaryScreen()
                 2 -> HistoryScreen()
                 3 -> ProfileScreen()
@@ -81,7 +84,8 @@ fun MainScreen() {
 }
 
 @Composable
-fun HomeScreenContent() {
+fun HomeScreenContent(username: String) {
+    val context = LocalContext.current
     val philippineZone = ZoneId.of("Asia/Manila")
     val philippineTime = ZonedDateTime.now(philippineZone)
     val day = philippineTime.format(DateTimeFormatter.ofPattern("dd"))
@@ -106,56 +110,73 @@ fun HomeScreenContent() {
             .background(Color(0xFFFFF7F0))
             .verticalScroll(rememberScrollState())
     ) {
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
-            Text(
-                text = "Hi, User!",
-                fontSize = 24.sp,
-                fontFamily = FontFamily.Serif,
-                color = Color.Black,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            )
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(top = 32.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Text(
-                    text = "How are you feeling today?",
-                    fontSize = 32.sp,
-                    fontFamily = FontFamily.Serif,
-                    textAlign = TextAlign.Center,
-                    color = Color.Black,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { /*TODO*/ },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5E6FF)),
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Assess Now", color = Color.Black)
+                    Text(
+                        text = "How are you feeling today?",
+                        fontSize = 32.sp,
+                        fontFamily = FontFamily.Serif,
+                        textAlign = TextAlign.Center,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { context.startActivity(Intent(context, AssessMoodActivity::class.java)) },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5E6FF)),
+                    ) {
+                        Text(text = "Assess Now", color = Color.Black)
+                    }
+                }
+            }
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFBF7F0)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "User Icon",
+                        tint = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Hi, ${username.replaceFirstChar { it.uppercase() }}!",
+                        fontSize = 24.sp,
+                        fontFamily = FontFamily.Serif,
+                        color = Color.Black
+                    )
                 }
             }
         }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .background(Color(0xFFFFD140))
                 .padding(16.dp),
         ) {
@@ -484,10 +505,7 @@ fun MoodBarChart(moodColors: Map<String, Color>) {
 @Composable
 fun HistoryScreen() {
     var searchQuery by remember { mutableStateOf("") }
-    val historyItems = listOf(
-        MoodHistory("28 Oct", "Today", "Tuesday", "😊 Great", "12:30 PM", listOf("Music", "Sleep", "Weather"), "It’s a great day today!!"),
-        MoodHistory("27 Oct", "Yesterday", "Monday", "😁 Awesome", "4:17 PM", listOf("Games", "Friends"), "Played awesome games with my friends :))")
-    )
+    val historyItems = MoodHistoryRepository.getMoodHistory()
 
     Column(
         modifier = Modifier
@@ -597,7 +615,7 @@ fun ProfileScreen() {
 @Composable
 fun MainScreenPreview() {
     MoodTrackerTheme {
-        MainScreen()
+        MainScreen(username = "User")
     }
 }
 

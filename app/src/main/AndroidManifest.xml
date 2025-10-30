@@ -34,6 +34,18 @@
             android:label="Home"
             android:theme="@style/Theme.MoodTracker">
         </activity>
+        <activity
+            android:name=".AssessMoodActivity"
+            android:exported="false"
+            android:label="Assess Mood"
+            android:theme="@style/Theme.MoodTracker">
+        </activity>
+        <activity
+            android:name=".AddDetailsActivity"
+            android:exported="false"
+            android:label="Add Details"
+            android:theme="@style/Theme.MoodTracker">
+        </activity>
     </application>
 
 </manifest>
