@@ -38,9 +38,10 @@ class AssessMoodActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val username = intent.getStringExtra("USERNAME") ?: "User"
         setContent {
             MoodTrackerTheme {
-                AssessMoodScreen()
+                AssessMoodScreen(username = username)
             }
         }
     }
@@ -48,7 +49,7 @@ class AssessMoodActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AssessMoodScreen() {
+fun AssessMoodScreen(username: String) {
     val context = LocalContext.current
     var selectedMood by remember { mutableStateOf<Mood?>(null) }
     val moods = listOf(
@@ -105,6 +106,7 @@ fun AssessMoodScreen() {
                         onMoodSelected = { 
                             selectedMood = mood
                             val intent = Intent(context, AddDetailsActivity::class.java)
+                            intent.putExtra("USERNAME", username)
                             intent.putExtra("MOOD_NAME", mood.name)
                             intent.putExtra("MOOD_ICON", mood.icon as Int) // Assuming icon is an Int resource
                             context.startActivity(intent)
@@ -164,6 +166,6 @@ fun MoodItem(mood: Mood, isSelected: Boolean, onMoodSelected: () -> Unit) {
 @Composable
 fun AssessMoodScreenPreview() {
     MoodTrackerTheme {
-        AssessMoodScreen()
+        AssessMoodScreen(username = "User")
     }
 }

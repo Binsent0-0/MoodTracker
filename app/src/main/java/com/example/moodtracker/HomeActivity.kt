@@ -5,8 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,7 +27,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +83,7 @@ fun MainScreen(username: String) {
                 0 -> HomeScreenContent(username = username)
                 1 -> SummaryScreen()
                 2 -> HistoryScreen()
-                3 -> ProfileScreen()
+                3 -> ProfileScreen(username = username)
             }
         }
     }
@@ -144,7 +149,11 @@ fun HomeScreenContent(username: String) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { context.startActivity(Intent(context, AssessMoodActivity::class.java)) },
+                        onClick = {
+                            val intent = Intent(context, AssessMoodActivity::class.java)
+                            intent.putExtra("USERNAME", username)
+                            context.startActivity(intent)
+                        },
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5E6FF)),
                     ) {
@@ -287,9 +296,6 @@ fun HomeScreenContent(username: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen() {
-    var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Week", "Month")
-
     val history = MoodHistoryRepository.getMoodHistory()
 
     val moodColors = mapOf(
@@ -320,36 +326,8 @@ fun SummaryScreen() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.White,
-            contentColor = Color.Black,
-            indicator = { tabPositions ->
-                Box(
-                    modifier = Modifier
-                        .tabIndicatorOffset(tabPositions[selectedTab])
-                        .height(4.dp)
-                        .background(Color(0xFFE1BEE7), shape = RoundedCornerShape(2.dp))
-                )
-            },
-            divider = {}
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title, color = if (selectedTab == index) Color.Black else Color.Gray) },
-                    modifier = if (selectedTab == index) Modifier.background(Color(0xFFE1BEE7).copy(alpha = 0.4f)) else Modifier.background(Color.White)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (selectedTab == 0) { // Week view
-            val weeklyHistory = history.filter { it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.WEEKS)) }
-            WeeklySummary(weeklyHistory, moodColors)
-        }
+        val weeklyHistory = history.filter { it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.WEEKS)) }
+        WeeklySummary(weeklyHistory, moodColors)
     }
 }
 
@@ -435,7 +413,7 @@ fun WeeklySummary(history: List<MoodHistory>, moodColors: Map<String, Color>) {
             ) {
                 Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("You felt ${dominantMood.key} ${dominantMood.value} out of 7 days", color = Color.Black)
-                    Text("Dominant Mood: ${dominantMood.key} ❤️", color = Color.Black)
+                    Text("Dominant Mood: ${dominantMood.key} ", color = Color.Black)
                 }
             }
         }
@@ -524,7 +502,21 @@ fun DayMoodPieChart(day: String, moods: List<String>, moodColors: Map<String, Co
 @Composable
 fun HistoryScreen() {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTimeFilter by remember { mutableStateOf<String?>(null) } // "Week", "Month", or null
     val historyItems = MoodHistoryRepository.getMoodHistory()
+
+    val filteredHistory = historyItems.filter {
+        val matchesSearch = searchQuery.isBlank() ||
+                it.date.contains(searchQuery, ignoreCase = true) ||
+                it.mood.contains(searchQuery, ignoreCase = true)
+
+        val matchesFilter = when (selectedTimeFilter) {
+            "Week" -> it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.WEEKS))
+            "Month" -> it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.MONTHS))
+            else -> true
+        }
+        matchesSearch && matchesFilter
+    }
 
     Column(
         modifier = Modifier
@@ -542,18 +534,34 @@ fun HistoryScreen() {
                 placeholder = { Text("Search...") },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Gray, unfocusedBorderColor = Color.LightGray)
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Gray, 
+                    unfocusedBorderColor = Color.LightGray,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
+                ),
+                textStyle = TextStyle(color = Color.Black)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(onClick = { /*TODO*/ }) { Text("Week", color = Color.Black) }
+            OutlinedButton(
+                onClick = { selectedTimeFilter = if (selectedTimeFilter == "Week") null else "Week" },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (selectedTimeFilter == "Week") Color(0xFFE1BEE7) else Color.Transparent
+                )
+            ) { Text("Week", color = Color.Black) }
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(onClick = { /*TODO*/ }) { Text("Month", color = Color.Black) }
+            OutlinedButton(
+                onClick = { selectedTimeFilter = if (selectedTimeFilter == "Month") null else "Month" },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (selectedTimeFilter == "Month") Color(0xFFE1BEE7) else Color.Transparent
+                )
+            ) { Text("Month", color = Color.Black) }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(historyItems) { item ->
+            items(filteredHistory) { item ->
                 MoodHistoryItem(item)
             }
         }
@@ -626,9 +634,196 @@ data class MoodHistory(val date: String, val day: String, val dayOfWeek: String,
 
 
 @Composable
-fun ProfileScreen() {
-    Text("Profile Screen")
+fun ProfileScreen(username: String) {
+    val history = MoodHistoryRepository.getMoodHistory()
+    val moodsLogged = history.size
+
+    var editableUsername by remember { mutableStateOf(username) }
+    var editableBio by remember { mutableStateOf("Taking it one day at a time") }
+    var showNameDialog by remember { mutableStateOf(false) }
+    var showBioDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5))
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .background(
+                    color = Color(0xFFFADBD8),
+                    shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 40.dp)
+            ) {
+                Card(
+                    shape = CircleShape,
+                    modifier = Modifier.size(100.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.LightGray)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "User Icon",
+                            modifier = Modifier.size(60.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = editableUsername.replaceFirstChar { it.uppercase() },
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Text(
+                    text = editableBio,
+                    fontSize = 16.sp,
+                    color = Color.DarkGray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9E6))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                ProfileInfoRow(label = "Joined", value = "March 2025")
+                ProfileInfoRow(label = "Streak", value = "12 days logged in a row")
+                ProfileInfoRow(label = "Moods Logged", value = moodsLogged.toString())
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9E6))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Edit Profile",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                EditProfileRow(icon = R.drawable.edit, text = "Change Name") {
+                    showNameDialog = true
+                }
+                EditProfileRow(icon = R.drawable.update_bio, text = "Update Bio/Quote") {
+                    showBioDialog = true
+                }
+            }
+        }
+
+        if (showNameDialog) {
+            EditDialog(
+                title = "Change Name",
+                initialValue = editableUsername,
+                onDismiss = { showNameDialog = false },
+                onSave = { newName ->
+                    editableUsername = newName
+                    showNameDialog = false
+                }
+            )
+        }
+
+        if (showBioDialog) {
+            EditDialog(
+                title = "Update Bio/Quote",
+                initialValue = editableBio,
+                onDismiss = { showBioDialog = false },
+                onSave = { newBio ->
+                    editableBio = newBio
+                    showBioDialog = false
+                }
+            )
+        }
+    }
 }
+
+@Composable
+fun ProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = "$label:", fontWeight = FontWeight.Bold, color = Color.Black)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = value, color = Color.DarkGray)
+    }
+}
+
+@Composable
+fun EditProfileRow(@DrawableRes icon: Int, text: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(painter = painterResource(id = icon), contentDescription = null, tint = Color.DarkGray)
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text, fontSize = 16.sp, color = Color.Black)
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+fun EditDialog(
+    title: String,
+    initialValue: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var text by remember { mutableStateOf(initialValue) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onSave(text) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 @Preview(showBackground = true, device = "spec:width=360dp,height=740dp,dpi=480")
 @Composable

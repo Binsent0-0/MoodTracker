@@ -4,6 +4,6 @@
 - [x] Initialize Git if not already done
 - [x] Check existing remotes
 - [x] Add GitHub remote origin: https://github.com/Binsent0-0/moodtracker.git
-- [ ] Add all files to staging
-- [ ] Commit changes with message "Initial commit"
-- [ ] Push to main branch
+- [x] Add all files to staging
+- [x] Commit changes with message "Initial commit"
+- [x] Push to main branch

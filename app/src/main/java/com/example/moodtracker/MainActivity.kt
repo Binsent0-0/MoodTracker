@@ -43,7 +43,7 @@ fun MoodTrackerScreen() {
     val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFFFF7F0) // A very light cream color
+        color = Color(0xFFFFF7F0)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -55,7 +55,7 @@ fun MoodTrackerScreen() {
                     .fillMaxWidth()
                     .padding(16.dp)
                     .clip(RoundedCornerShape(32.dp))
-                    .background(Color(0xFFFFD140)), // Yellow color
+                    .background(Color(0xFFFFD140)),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -147,7 +147,7 @@ fun MoodTrackerScreen() {
     }
 }
 
-@Preview(showBackground = true, device = "spec:shape=Normal,width=360,height=640,unit=dp,dpi=480")
+@Preview(showBackground = true, device = "spec:width=360dp,height=640dp,dpi=480")
 @Composable
 fun MoodTrackerScreenPreview() {
     MoodTrackerTheme {

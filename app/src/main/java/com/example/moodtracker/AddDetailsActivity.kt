@@ -2,6 +2,7 @@ package com.example.moodtracker
 
 import android.app.Activity
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,7 +34,7 @@ class AddDetailsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val moodName = intent.getStringExtra("MOOD_NAME") ?: "Unknown"
-        val moodIcon = intent.getIntExtra("MOOD_ICON", R.drawable.mood_okay) // Default icon
+        val moodIcon = intent.getIntExtra("MOOD_ICON", R.drawable.mood_okay)
         setContent {
             MoodTrackerTheme {
                 AddDetailsScreen(moodName = moodName, moodIcon = moodIcon)
@@ -143,7 +144,9 @@ fun AddDetailsScreen(moodName: String, moodIcon: Int) {
                         value = note,
                         onValueChange = { note = it },
                         placeholder = { Text("Add a note...") },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                         colors = TextFieldDefaults.colors(
                             focusedTextColor = Color.Black,
                             unfocusedTextColor = Color.Black,
@@ -157,6 +160,7 @@ fun AddDetailsScreen(moodName: String, moodIcon: Int) {
                      Button(
                          onClick = { 
                             MoodHistoryRepository.addMood(moodName, selectedCauses, note)
+                            Toast.makeText(context, "Mood logged successfully!", Toast.LENGTH_SHORT).show()
                             (context as? Activity)?.finish()
                           },
                          modifier = Modifier.align(Alignment.End)
