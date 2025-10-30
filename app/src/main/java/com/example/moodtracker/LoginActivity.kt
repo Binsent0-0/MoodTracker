@@ -21,7 +21,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.moodtracker.data.AppDatabase
 import com.example.moodtracker.ui.theme.MoodTrackerTheme
+import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,16 +42,8 @@ fun LoginScreen() {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val context = LocalContext.current
-
-    val userCredentials = mapOf(
-        "rom" to "rom123",
-        "kian" to "kian123",
-        "vince" to "vince123",
-        "roxanne" to "roxanne123",
-        "kyra" to "kyra123",
-        "lois" to "lois123",
-        "lester" to "lester123"
-    )
+    val coroutineScope = rememberCoroutineScope()
+    var loginError by remember { mutableStateOf<String?>(null) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -124,14 +118,25 @@ fun LoginScreen() {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            loginError?.let {
+                Text(text = it, color = Color.Red, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Button(
-                onClick = { 
-                    if (userCredentials[username] == password) {
-                        val intent = Intent(context, HomeActivity::class.java)
-                        intent.putExtra("USERNAME", username)
-                        context.startActivity(intent)
+                onClick = {
+                    coroutineScope.launch {
+                        val db = AppDatabase.getDatabase(context)
+                        val user = db.userDao().getUserByUsername(username)
+                        if (user != null && user.password == password) {
+                            val intent = Intent(context, HomeActivity::class.java)
+                            intent.putExtra("USERNAME", username)
+                            context.startActivity(intent)
+                        } else {
+                            loginError = "Invalid username or password"
+                        }
                     }
-                 },
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),

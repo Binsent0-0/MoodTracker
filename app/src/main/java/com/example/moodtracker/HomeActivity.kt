@@ -43,6 +43,9 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val username = intent.getStringExtra("USERNAME") ?: "User"
+        // Initialize database and repository
+        val database = AppDatabase.getDatabase(this)
+        MoodHistoryRepository.initialize(database)
         setContent {
             MoodTrackerTheme {
                 MainScreen(username = username)
@@ -139,7 +142,11 @@ fun HomeScreenContent(username: String) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { context.startActivity(Intent(context, AssessMoodActivity::class.java)) },
+                        onClick = {
+                            val intent = Intent(context, AssessMoodActivity::class.java)
+                            intent.putExtra("USERNAME", username)
+                            context.startActivity(intent)
+                        },
                         shape = RoundedCornerShape(24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5E6FF)),
                     ) {
@@ -505,7 +512,14 @@ fun MoodBarChart(moodColors: Map<String, Color>) {
 @Composable
 fun HistoryScreen() {
     var searchQuery by remember { mutableStateOf("") }
-    val historyItems = MoodHistoryRepository.getMoodHistory()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var historyItems by remember { mutableStateOf<List<MoodHistory>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val username = (context as? HomeActivity)?.intent?.getStringExtra("USERNAME") ?: ""
+        historyItems = MoodHistoryRepository.getMoodHistory(username)
+    }
 
     Column(
         modifier = Modifier
@@ -514,7 +528,7 @@ fun HistoryScreen() {
             .padding(16.dp)
     ) {
         Text("Your Mood History", fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, color = Color.Black, modifier = Modifier.padding(bottom = 16.dp))
-        
+
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = searchQuery,
@@ -534,7 +548,7 @@ fun HistoryScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(historyItems) { item ->
+            items(historyItems.filter { it.mood.contains(searchQuery, ignoreCase = true) || it.note.contains(searchQuery, ignoreCase = true) }) { item ->
                 MoodHistoryItem(item)
             }
         }

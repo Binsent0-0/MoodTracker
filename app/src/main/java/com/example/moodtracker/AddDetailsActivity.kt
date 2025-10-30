@@ -34,9 +34,10 @@ class AddDetailsActivity : ComponentActivity() {
         enableEdgeToEdge()
         val moodName = intent.getStringExtra("MOOD_NAME") ?: "Unknown"
         val moodIcon = intent.getIntExtra("MOOD_ICON", R.drawable.mood_okay) // Default icon
+        val username = intent.getStringExtra("USERNAME") ?: ""
         setContent {
             MoodTrackerTheme {
-                AddDetailsScreen(moodName = moodName, moodIcon = moodIcon)
+                AddDetailsScreen(moodName = moodName, moodIcon = moodIcon, username = username)
             }
         }
     }
@@ -46,7 +47,7 @@ data class Cause(val text: String, val icon: Int)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddDetailsScreen(moodName: String, moodIcon: Int) {
+fun AddDetailsScreen(moodName: String, moodIcon: Int, username: String) {
     val context = LocalContext.current
     var note by remember { mutableStateOf("") }
     val selectedCauses = remember { mutableStateListOf<Cause>() }
@@ -128,7 +129,7 @@ fun AddDetailsScreen(moodName: String, moodIcon: Int) {
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)) {
@@ -148,15 +149,15 @@ fun AddDetailsScreen(moodName: String, moodIcon: Int) {
                             focusedTextColor = Color.Black,
                             unfocusedTextColor = Color.Black,
                             cursorColor = Color.Black,
-                            focusedContainerColor = Color.Transparent, 
-                            unfocusedContainerColor = Color.Transparent, 
-                            focusedIndicatorColor = Color.Transparent, 
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
                      Button(
-                         onClick = { 
-                            MoodHistoryRepository.addMood(moodName, selectedCauses, note)
+                         onClick = {
+                            MoodHistoryRepository.addMood(username, moodName, selectedCauses, note)
                             (context as? Activity)?.finish()
                           },
                          modifier = Modifier.align(Alignment.End)
@@ -208,6 +209,6 @@ fun CauseChip(cause: Cause, onCauseSelected: (Cause) -> Unit) {
 @Composable
 fun AddDetailsScreenPreview() {
     MoodTrackerTheme {
-        AddDetailsScreen(moodName = "Loved", moodIcon = R.drawable.mood_loved)
+        AddDetailsScreen(moodName = "Loved", moodIcon = R.drawable.mood_loved, username = "User")
     }
 }
