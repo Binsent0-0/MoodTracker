@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -34,9 +33,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.moodtracker.ui.theme.MoodTrackerTheme
+import java.time.DayOfWeek
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,6 +101,10 @@ fun HomeScreenContent(username: String) {
     )
     var currentQuestionIndex by remember { mutableStateOf(0) }
 
+    val history = MoodHistoryRepository.getMoodHistory()
+    val weeklyHistory = history.filter { it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.WEEKS)) }
+    val loggedDays = weeklyHistory.map { it.zonedDateTime.toLocalDate() }.distinct().count()
+
     fun nextQuestion() {
         currentQuestionIndex = (currentQuestionIndex + 1) % quizQuestions.size
     }
@@ -131,7 +136,7 @@ fun HomeScreenContent(username: String) {
                 ) {
                     Text(
                         text = "How are you feeling today?",
-                        fontSize = 32.sp,
+                        fontSize = 28.sp,
                         fontFamily = FontFamily.Serif,
                         textAlign = TextAlign.Center,
                         color = Color.Black,
@@ -218,7 +223,7 @@ fun HomeScreenContent(username: String) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = "Mood Summary", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Black)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
                             CircularProgressIndicator(
                                 progress = 1f,
                                 modifier = Modifier.size(80.dp),
@@ -226,12 +231,12 @@ fun HomeScreenContent(username: String) {
                                 strokeWidth = 8.dp
                             )
                             CircularProgressIndicator(
-                                progress = 6f / 7f,
+                                progress = loggedDays / 7f,
                                 modifier = Modifier.size(80.dp),
                                 color = Color(0xFF673AB7),
                                 strokeWidth = 8.dp
                             )
-                            Text(text = "6/7", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(text = "$loggedDays/7", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                     }
                 }
@@ -285,19 +290,18 @@ fun SummaryScreen() {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Week", "Month")
 
-    val moodData = mapOf(
-        "Awesome" to 3f,
-        "Great" to 2f,
-        "Bored" to 1f,
-        "Annoyed" to 1f
-    )
+    val history = MoodHistoryRepository.getMoodHistory()
 
     val moodColors = mapOf(
-        "Great" to Color(0xFF81C784),      // Green
-        "Bored" to Color(0xFFE57373),      // Red
-        "Annoyed" to Color(0xFFFFB74D),    // Orange
-        "Sleepy" to Color(0xFF9575CD),     // Purple
-        "Awesome" to Color(0xFF4FC3F7)     // Blue
+        "Awesome" to Color(0xFFFFD54F),
+        "Great" to Color(0xFFFFF176),
+        "Loved" to Color(0xFFF06292),
+        "Okay" to Color(0xFFC5E1A5),
+        "Bored" to Color(0xFFE0E0E0),
+        "Annoyed" to Color(0xFFFFB74D),
+        "Sleepy" to Color(0xFF7986CB),
+        "Sad" to Color(0xFF90A4AE),
+        "Upset" to Color(0xFFE57373)
     )
 
     Column(
@@ -343,14 +347,19 @@ fun SummaryScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         if (selectedTab == 0) { // Week view
-            WeeklySummary(moodData, moodColors)
+            val weeklyHistory = history.filter { it.zonedDateTime.isAfter(ZonedDateTime.now().minus(1, ChronoUnit.WEEKS)) }
+            WeeklySummary(weeklyHistory, moodColors)
         }
     }
 }
 
 @Composable
-fun WeeklySummary(moodData: Map<String, Float>, moodColors: Map<String, Color>) {
-    val total = moodData.values.sum()
+fun WeeklySummary(history: List<MoodHistory>, moodColors: Map<String, Color>) {
+
+    val moodCounts = history.groupingBy { it.mood }.eachCount()
+    val total = moodCounts.values.sum().toFloat()
+    val loggedDays = history.map { it.zonedDateTime.toLocalDate() }.distinct().count()
+    val dominantMood = moodCounts.maxByOrNull { it.value }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Card(
@@ -365,26 +374,28 @@ fun WeeklySummary(moodData: Map<String, Float>, moodColors: Map<String, Color>) 
                 Box(modifier = Modifier.size(140.dp), contentAlignment = Alignment.Center) {
                     Canvas(modifier = Modifier.size(140.dp)) {
                         var startAngle = -90f
-                        moodData.entries.forEach { (mood, value) ->
-                            val sweepAngle = (value / total) * 360f
-                            drawArc(
-                                color = moodColors[mood] ?: Color.Gray,
-                                startAngle = startAngle,
-                                sweepAngle = sweepAngle,
-                                useCenter = false,
-                                style = Stroke(width = 35f)
-                            )
-                            startAngle += sweepAngle
+                        if(total > 0) {
+                             moodCounts.entries.forEach { (mood, count) ->
+                                val sweepAngle = (count / total) * 360f
+                                drawArc(
+                                    color = moodColors[mood] ?: Color.Gray,
+                                    startAngle = startAngle,
+                                    sweepAngle = sweepAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = 35f)
+                                )
+                                startAngle += sweepAngle
+                            }
                         }
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                         Text(text = "6/7", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
+                         Text(text = "$loggedDays/7", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Color.Black)
                          Text(text = "This week's log", fontSize = 12.sp, color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    moodData.keys.forEach { mood ->
+                    moodCounts.keys.forEach { mood ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
                             Box(
                                 modifier = Modifier
@@ -394,7 +405,7 @@ fun WeeklySummary(moodData: Map<String, Float>, moodColors: Map<String, Color>) 
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = mood, fontSize = 14.sp, color = Color.Black)
                             Spacer(modifier = Modifier.weight(1f))
-                            Text(text = moodData[mood]?.toInt().toString(), fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(text = moodCounts[mood].toString(), fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                     }
                 }
@@ -410,92 +421,100 @@ fun WeeklySummary(moodData: Map<String, Float>, moodColors: Map<String, Color>) 
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Mood Over Time", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Black)
                 Spacer(modifier = Modifier.height(16.dp))
-                MoodBarChart(moodColors)
+                MoodBarChart(history, moodColors)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-        ) {
-            Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("You felt Awesome 3 out of 7 days", color = Color.Black)
-                Text("Dominant Mood: Great ❤️", color = Color.Black)
+        if(dominantMood != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("You felt ${dominantMood.key} ${dominantMood.value} out of 7 days", color = Color.Black)
+                    Text("Dominant Mood: ${dominantMood.key} ❤️", color = Color.Black)
+                }
             }
         }
     }
 }
 
 @Composable
-fun MoodBarChart(moodColors: Map<String, Color>) {
-    val dailyMoods = mapOf(
-        "Tue" to ("Awesome" to 0.7f),
-        "Wed" to ("Great" to 1.0f),
-        "Thu" to ("Bored" to 0.8f),
-        "Fri" to ("Annoyed" to 0.6f),
-        "Sat" to ("Sleepy" to 0.5f)
+fun MoodBarChart(history: List<MoodHistory>, moodColors: Map<String, Color>) {
+    val dailyMoods = history.groupBy { it.zonedDateTime.toLocalDate() }.mapValues { entry -> entry.value.map { it.mood } }
+    val today = ZonedDateTime.now().toLocalDate()
+    val days = listOf(
+        today.with(DayOfWeek.MONDAY),
+        today.with(DayOfWeek.TUESDAY),
+        today.with(DayOfWeek.WEDNESDAY),
+        today.with(DayOfWeek.THURSDAY),
+        today.with(DayOfWeek.FRIDAY),
+        today.with(DayOfWeek.SATURDAY),
+        today.with(DayOfWeek.SUNDAY)
     )
-    val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    val maxBarHeight = 150.dp
-
-    Column {
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .height(maxBarHeight)) {
-            // Grid lines
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val lineHeight = size.height / 7
-                for (i in 1..7) {
-                    drawLine(
-                        color = Color.LightGray.copy(alpha = 0.5f),
-                        start = Offset(x = 40f, y = i * lineHeight),
-                        end = Offset(x = size.width, y = i * lineHeight),
-                        strokeWidth = 1f
-                    )
+    
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        days.chunked(3).forEach { rowDays ->
+             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                rowDays.forEach { day -> 
+                    val moodsForDay = dailyMoods[day] ?: emptyList()
+                    DayMoodPieChart(day.dayOfWeek.name.substring(0,3), moodsForDay, moodColors)
                 }
             }
-            
-            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-                days.forEach { day ->
-                    val moodEntry = dailyMoods[day]
-                    val barHeightFraction = moodEntry?.second ?: 0f
-                    val mood = moodEntry?.first
-                    
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (barHeightFraction > 0f) {
-                             Box(modifier = Modifier
-                                .width(35.dp)
-                                .fillMaxHeight(barHeightFraction)
-                                .background(moodColors[mood] ?: Color.Gray, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.weight(1f, fill=true))
-                        }
-                       
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+         Spacer(modifier = Modifier.height(16.dp))
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            val allMoods = listOf("Awesome", "Great", "Loved", "Okay", "Bored", "Annoyed", "Sleepy", "Sad", "Upset")
+            val firstRowMoods = allMoods.subList(0, 5)
+            val secondRowMoods = allMoods.subList(5, allMoods.size)
+
+            Row(horizontalArrangement = Arrangement.Center) {
+                firstRowMoods.forEach { mood ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+                        Box(modifier = Modifier.size(8.dp).background(moodColors[mood] ?: Color.Gray, CircleShape))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(text = mood, fontSize = 10.sp, color = Color.Black)
                     }
                 }
             }
-             Column(modifier = Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                 days.forEach { day ->
-                    Text(text = day, fontSize = 12.sp, color = Color.Black)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.Center) {
+                secondRowMoods.forEach { mood ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
+                        Box(modifier = Modifier.size(8.dp).background(moodColors[mood] ?: Color.Gray, CircleShape))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(text = mood, fontSize = 10.sp, color = Color.Black)
+                    }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-             val legendMoods = listOf("Great", "Bored", "Annoyed", "Sleepy", "Awesome")
-             legendMoods.forEach { mood ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-                    Box(modifier = Modifier.size(8.dp).background(moodColors[mood] ?: Color.Gray, CircleShape))
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(text = mood, fontSize = 10.sp, color = Color.Black)
+    }
+}
+
+@Composable
+fun DayMoodPieChart(day: String, moods: List<String>, moodColors: Map<String, Color>) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = day, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Canvas(modifier = Modifier.size(40.dp)) {
+            if (moods.isNotEmpty()) {
+                var startAngle = -90f
+                val sweepAngle = 360f / moods.size
+                moods.forEach { mood ->
+                    drawArc(
+                        color = moodColors[mood] ?: Color.Gray,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = true
+                    )
+                    startAngle += sweepAngle
                 }
+            } else {
+                drawCircle(color = Color.LightGray.copy(alpha = 0.5f))
             }
         }
     }
@@ -603,7 +622,7 @@ fun Chip(text: String) {
     }
 }
 
-data class MoodHistory(val date: String, val day: String, val dayOfWeek: String, val mood: String, val time: String, val tags: List<String>, val note: String)
+data class MoodHistory(val date: String, val day: String, val dayOfWeek: String, val mood: String, val time: String, val tags: List<String>, val note: String, val zonedDateTime: ZonedDateTime)
 
 
 @Composable
